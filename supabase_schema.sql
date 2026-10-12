@@ -149,3 +149,39 @@ INSERT INTO rubrics (review_round_id, criterion_code, title, description, max_ma
 ('33333333-3333-3333-3333-333333333333', 'C4', 'Live Demo & Deployment Verification', 'Working live prototype, responsiveness, and functional features', 10),
 ('33333333-3333-3333-3333-333333333333', 'C5', 'Presentation (PPT) & Viva Voce Q&A', 'Slide quality, verbal clarity, and defense during viva questioning', 10)
 ON CONFLICT DO NOTHING;
+
+-- Seed Official Department Faculty Directory (30 Faculty + 1 Admin)
+INSERT INTO profiles (email, full_name, role, roll_or_emp_id, department) VALUES
+('hod_it@kongu.ac.in', 'Dr. S. Varadhaganapathy', 'super_admin', 'KEC-IT-HOD', 'Department of Information Technology'),
+('senthilkumar.it@kongu.ac.in', 'Mr. Senthilkumar', 'admin', 'KEC-IT-LA01', 'Department of Information Technology'),
+('premalatha@kongu.ac.in', 'Dr. J. Premalatha', 'jury', 'KEC-IT-002', 'Department of Information Technology'),
+('anandamurugan@kongu.ac.in', 'Dr. S. Anandamurugan', 'jury', 'KEC-IT-003', 'Department of Information Technology'),
+('kamalam@kongu.ac.in', 'Dr. G. K. Kamalam', 'jury', 'KEC-IT-004', 'Department of Information Technology'),
+('shanthakumari@kongu.ac.in', 'Dr. R. Shanthakumari', 'jury', 'KEC-IT-005', 'Department of Information Technology'),
+('roopadevi@kongu.ac.in', 'Dr. E. M. Roopa Devi', 'jury', 'KEC-IT-006', 'Department of Information Technology'),
+('vijayanand@kongu.ac.in', 'D. Vijay Anand', 'jury', 'KEC-IT-007', 'Department of Information Technology'),
+('ponselvakumar@kongu.ac.in', 'A. P. Ponselvakumar', 'jury', 'KEC-IT-008', 'Department of Information Technology'),
+('jeevanantham@kongu.ac.in', 'A. Jeevanantham', 'jury', 'KEC-IT-009', 'Department of Information Technology'),
+('devisurya@kongu.ac.in', 'Dr. V. Devisurya', 'jury', 'KEC-IT-010', 'Department of Information Technology'),
+('vinothkumar@kongu.ac.in', 'S. Vinothkumar', 'jury', 'KEC-IT-011', 'Department of Information Technology'),
+('aarthi@kongu.ac.in', 'R. Aarthi', 'jury', 'KEC-IT-012', 'Department of Information Technology'),
+('sruthi@kongu.ac.in', 'K. Sruthi', 'jury', 'KEC-IT-013', 'Department of Information Technology'),
+('kavithra@kongu.ac.in', 'S. Kavithra', 'jury', 'KEC-IT-014', 'Department of Information Technology'),
+('sandhiya@kongu.ac.in', 'R. Sandhiya', 'jury', 'KEC-IT-015', 'Department of Information Technology'),
+('gayathri@kongu.ac.in', 'V. P. Gayathri', 'jury', 'KEC-IT-016', 'Department of Information Technology'),
+('vanitha@kongu.ac.in', 'P. Vanitha', 'jury', 'KEC-IT-017', 'Department of Information Technology'),
+('deenumol@kongu.ac.in', 'A. Deenu Mol', 'jury', 'KEC-IT-018', 'Department of Information Technology'),
+('vaishnavi@kongu.ac.in', 'T. Vaishnavi', 'jury', 'KEC-IT-019', 'Department of Information Technology'),
+('krishnaveni@kongu.ac.in', 'S. Krishnaveni', 'jury', 'KEC-IT-020', 'Department of Information Technology'),
+('prathika@kongu.ac.in', 'M. E. Prathika', 'jury', 'KEC-IT-021', 'Department of Information Technology'),
+('vishnupriya@kongu.ac.in', 'T. S. Vishnu Priya', 'jury', 'KEC-IT-022', 'Department of Information Technology'),
+('monica@kongu.ac.in', 'Monica Murugesan', 'jury', 'KEC-IT-023', 'Department of Information Technology'),
+('suganya@kongu.ac.in', 'S. Suganya', 'jury', 'KEC-IT-024', 'Department of Information Technology'),
+('sasikala@kongu.ac.in', 'G. Sasikala', 'jury', 'KEC-IT-025', 'Department of Information Technology'),
+('sowmiya@kongu.ac.in', 'E. Sowmiya', 'jury', 'KEC-IT-026', 'Department of Information Technology'),
+('sripriya@kongu.ac.in', 'S. Sripriya', 'jury', 'KEC-IT-027', 'Department of Information Technology'),
+('nithyakumar@kongu.ac.in', 'M. Nithyakumar', 'jury', 'KEC-IT-028', 'Department of Information Technology'),
+('govindaraj@kongu.ac.in', 'S. Govindaraj', 'jury', 'KEC-IT-029', 'Department of Information Technology'),
+('vivek@kongu.ac.in', 'Vivek Amruth Chinnasamy', 'jury', 'KEC-IT-030', 'Department of Information Technology')
+ON CONFLICT (email) DO NOTHING;
+
