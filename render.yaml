@@ -1,0 +1,16 @@
+services:
+  # KEC IT Project Evaluation Portal - Render Static Site
+  - type: web
+    name: kec-project-evaluation
+    runtime: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_SUPABASE_URL
+        value: https://moxvgzzlqkkfumzzgldw.supabase.co
+      - key: VITE_SUPABASE_ANON_KEY
+        value: sb_publishable_h0Wh0mER3FXuZZzvmz2y6Q_uEfzwYIf
