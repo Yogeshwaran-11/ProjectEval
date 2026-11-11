@@ -13,7 +13,6 @@ import {
   AlertTriangle,
   ArrowRightLeft,
   Sparkles,
-  ExternalLink,
   BookOpen
 } from 'lucide-react';
 
@@ -27,9 +26,7 @@ export const StudentPortal = () => {
     evaluations,
     activeReviewId,
     reviewRounds,
-    rubrics,
-    updateTeamDeliverables,
-    activeNotification
+    updateTeamDeliverables
   } = useApp();
 
   // Find this student's team

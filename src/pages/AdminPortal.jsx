@@ -9,9 +9,7 @@ import {
   CheckCircle,
   Clock,
   Layers,
-  Shield,
   Edit2,
-  ArrowRight,
   UserPlus,
   UserMinus,
   FolderPlus,
@@ -31,7 +29,6 @@ export const AdminPortal = () => {
     deleteRubricCriterion,
     panels,
     teams,
-    users,
     facultyDirectory,
     updatePanelJuries,
     updatePanelTeamQueue
@@ -158,9 +155,6 @@ export const AdminPortal = () => {
     setPanelSaved(true);
     setTimeout(() => setPanelSaved(false), 3000);
   };
-
-  const facultyMembers = users.filter(u => u.role === 'jury' || u.role === 'mentor');
-
 
   const handleStartEdit = crit => {
     setEditingId(crit.id);

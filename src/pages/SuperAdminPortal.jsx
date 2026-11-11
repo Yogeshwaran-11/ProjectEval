@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { MediaModal } from '../components/MediaModal';
-import { QueueStatusBadge } from '../components/QueueStatusBadge';
 import { GithubIcon } from '../components/Icons';
 import { ProgressRing } from '../components/ProgressRing';
 import {
@@ -10,12 +9,9 @@ import {
   Search,
   Users,
   Award,
-  MapPin,
   Presentation,
   Globe,
-  Mail,
-  ChevronDown,
-  Download
+  Mail
 } from 'lucide-react';
 
 export const SuperAdminPortal = () => {
@@ -242,10 +238,6 @@ export const SuperAdminPortal = () => {
       f.email.toLowerCase().includes(facultySearch.toLowerCase())
     );
   });
-
-  const handlePrintPDF = () => {
-    window.print();
-  };
 
   const hodFaculty = facultyDirectory.find(f => f.isHOD) || facultyDirectory[0];
 

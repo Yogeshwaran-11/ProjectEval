@@ -4,7 +4,6 @@ import { QueueStatusBadge } from '../components/QueueStatusBadge';
 import { MediaModal } from '../components/MediaModal';
 import { GithubIcon } from '../components/Icons';
 import {
-  Users,
   Clock,
   MapPin,
   BellRing,
@@ -14,17 +13,13 @@ import {
   Globe,
   Lock,
   Search,
-  Sparkles,
-  ArrowRight,
-  Sliders,
-  FileCheck
+  ArrowRight
 } from 'lucide-react';
 
 export const JuryPortal = () => {
   const {
     currentUser,
     switchRole,
-    users,
     panels,
     teams,
     rubrics,
@@ -247,7 +242,6 @@ export const JuryPortal = () => {
                 {filteredQueue.map(item => {
                   const team = teams.find(t => t.id === item.teamId);
                   const isSelected = selectedTeam.id === item.teamId;
-                  const isPanelActive = panel.activeTeamId === item.teamId;
 
                   return (
                     <div
@@ -473,7 +467,7 @@ export const JuryPortal = () => {
 
               {/* 5 Criteria Inputs */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                {roundRubrics.map((crit, index) => {
+                {roundRubrics.map(crit => {
                   const currentMark = marksState[crit.id] !== undefined ? marksState[crit.id] : 8.5;
 
                   return (

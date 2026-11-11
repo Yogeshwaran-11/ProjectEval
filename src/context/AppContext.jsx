@@ -1,5 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import * as XLSX from 'xlsx';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import confetti from 'canvas-confetti';
 import {
   INITIAL_INSTITUTION,
@@ -11,37 +10,50 @@ import {
   INITIAL_EVALUATIONS,
   OFFICIAL_KEC_FACULTY
 } from '../data/initialData';
+import {
+  checkSupabaseHealth,
+  fetchAllCloudData,
+  seedCloudFromInitialData,
+  dbSendStandbyAlert,
+  dbAdvanceQueue,
+  dbUpdatePanelVenue,
+  dbUpdatePanelJuries,
+  dbUpdatePanelQueue,
+  dbSaveEvaluation,
+  dbUpdateDeliverables,
+  dbSaveRubricCriterion,
+  dbDeleteRubricCriterion,
+  setupSupabaseRealtimeSubscriptions
+} from '../services/supabaseService';
 
 const AppContext = createContext();
-const DATA_VERSION = 'v7_multi_panels_expanded';
+const DATA_VERSION = 'v8_multi_tab_realtime_ready';
+
+// Native BroadcastChannel for instantaneous multi-tab real-time sync
+const syncChannel =
+  typeof window !== 'undefined' && 'BroadcastChannel' in window
+    ? new BroadcastChannel('kec_eval_realtime_channel')
+    : null;
 
 export const AppProvider = ({ children }) => {
-  // Check version to ensure new HOD and faculty updates apply immediately
-  useEffect(() => {
+  // Load state from localStorage or initial seed with automatic version check
+  const [institution, setInstitution] = useState(() => {
     const savedVer = localStorage.getItem('pe_version');
     if (savedVer !== DATA_VERSION) {
       localStorage.setItem('pe_version', DATA_VERSION);
       localStorage.setItem('pe_institution', JSON.stringify(INITIAL_INSTITUTION));
-      localStorage.setItem('pe_users', JSON.stringify(INITIAL_USERS));
-      localStorage.setItem('pe_panels', JSON.stringify(INITIAL_PANELS));
-      localStorage.setItem('pe_teams', JSON.stringify(INITIAL_TEAMS));
-      localStorage.setItem('pe_evaluations', JSON.stringify(INITIAL_EVALUATIONS));
-      setInstitution(INITIAL_INSTITUTION);
-      setUsers(INITIAL_USERS);
-      setPanels(INITIAL_PANELS);
-      setTeams(INITIAL_TEAMS);
-      setEvaluations(INITIAL_EVALUATIONS);
+      return INITIAL_INSTITUTION;
     }
-  }, []);
-
-  // Load state from localStorage or initial seed
-  const [institution, setInstitution] = useState(() => {
     const saved = localStorage.getItem('pe_institution');
-    const savedVer = localStorage.getItem('pe_version');
-    return saved && savedVer === DATA_VERSION ? JSON.parse(saved) : INITIAL_INSTITUTION;
+    return saved ? JSON.parse(saved) : INITIAL_INSTITUTION;
   });
 
   const [reviewRounds, setReviewRounds] = useState(() => {
+    const savedVer = localStorage.getItem('pe_version');
+    if (savedVer !== DATA_VERSION) {
+      localStorage.setItem('pe_rounds', JSON.stringify(INITIAL_REVIEW_ROUNDS));
+      return INITIAL_REVIEW_ROUNDS;
+    }
     const saved = localStorage.getItem('pe_rounds');
     return saved ? JSON.parse(saved) : INITIAL_REVIEW_ROUNDS;
   });
@@ -49,32 +61,53 @@ export const AppProvider = ({ children }) => {
   const [activeReviewId, setActiveReviewId] = useState('REV-2');
 
   const [rubrics, setRubrics] = useState(() => {
+    const savedVer = localStorage.getItem('pe_version');
+    if (savedVer !== DATA_VERSION) {
+      localStorage.setItem('pe_rubrics', JSON.stringify(INITIAL_RUBRICS));
+      return INITIAL_RUBRICS;
+    }
     const saved = localStorage.getItem('pe_rubrics');
     return saved ? JSON.parse(saved) : INITIAL_RUBRICS;
   });
 
   const [users, setUsers] = useState(() => {
-    const saved = localStorage.getItem('pe_users');
     const savedVer = localStorage.getItem('pe_version');
-    return saved && savedVer === DATA_VERSION ? JSON.parse(saved) : INITIAL_USERS;
+    if (savedVer !== DATA_VERSION) {
+      localStorage.setItem('pe_users', JSON.stringify(INITIAL_USERS));
+      return INITIAL_USERS;
+    }
+    const saved = localStorage.getItem('pe_users');
+    return saved ? JSON.parse(saved) : INITIAL_USERS;
   });
 
   const [teams, setTeams] = useState(() => {
-    const saved = localStorage.getItem('pe_teams');
     const savedVer = localStorage.getItem('pe_version');
-    return saved && savedVer === DATA_VERSION ? JSON.parse(saved) : INITIAL_TEAMS;
+    if (savedVer !== DATA_VERSION) {
+      localStorage.setItem('pe_teams', JSON.stringify(INITIAL_TEAMS));
+      return INITIAL_TEAMS;
+    }
+    const saved = localStorage.getItem('pe_teams');
+    return saved ? JSON.parse(saved) : INITIAL_TEAMS;
   });
 
   const [panels, setPanels] = useState(() => {
-    const saved = localStorage.getItem('pe_panels');
     const savedVer = localStorage.getItem('pe_version');
-    return saved && savedVer === DATA_VERSION ? JSON.parse(saved) : INITIAL_PANELS;
+    if (savedVer !== DATA_VERSION) {
+      localStorage.setItem('pe_panels', JSON.stringify(INITIAL_PANELS));
+      return INITIAL_PANELS;
+    }
+    const saved = localStorage.getItem('pe_panels');
+    return saved ? JSON.parse(saved) : INITIAL_PANELS;
   });
 
   const [evaluations, setEvaluations] = useState(() => {
-    const saved = localStorage.getItem('pe_evaluations');
     const savedVer = localStorage.getItem('pe_version');
-    return saved && savedVer === DATA_VERSION ? JSON.parse(saved) : INITIAL_EVALUATIONS;
+    if (savedVer !== DATA_VERSION) {
+      localStorage.setItem('pe_evaluations', JSON.stringify(INITIAL_EVALUATIONS));
+      return INITIAL_EVALUATIONS;
+    }
+    const saved = localStorage.getItem('pe_evaluations');
+    return saved ? JSON.parse(saved) : INITIAL_EVALUATIONS;
   });
 
   // Current session state
@@ -86,6 +119,7 @@ export const AppProvider = ({ children }) => {
   const [currentUserId, setCurrentUserId] = useState('usr-superadmin');
   const [activeNotification, setActiveNotification] = useState(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [cloudSyncStatus, setCloudSyncStatus] = useState('checking'); // 'checking' | 'cloud_connected' | 'local_interactive'
 
   const login = () => {
     setIsAuthenticated(true);
@@ -123,7 +157,7 @@ export const AppProvider = ({ children }) => {
   }, [evaluations]);
 
   // Sound chime for Standby Alerts
-  const playAlertSound = () => {
+  const playAlertSound = useCallback(() => {
     if (!soundEnabled) return;
     try {
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -141,7 +175,173 @@ export const AppProvider = ({ children }) => {
     } catch (e) {
       console.warn('AudioContext not permitted yet', e);
     }
-  };
+  }, [soundEnabled]);
+
+  // Supabase Cloud Initialization & Realtime Subscription
+  useEffect(() => {
+    let unsubscribeRealtime = null;
+
+    async function initCloud() {
+      try {
+        const health = await checkSupabaseHealth();
+        if (!health.online) {
+          setCloudSyncStatus('local_interactive');
+          return;
+        }
+
+        setCloudSyncStatus('cloud_connected');
+        const cloudData = await fetchAllCloudData();
+        if (cloudData) {
+          if (cloudData.panels) setPanels(cloudData.panels);
+          if (cloudData.teams) setTeams(cloudData.teams);
+          if (cloudData.rubrics) setRubrics(cloudData.rubrics);
+          if (cloudData.evaluations) setEvaluations(cloudData.evaluations);
+        }
+
+        unsubscribeRealtime = setupSupabaseRealtimeSubscriptions({
+          onPanelChange: payload => {
+            if (payload.new && payload.new.id) {
+              setPanels(prev =>
+                prev.map(p =>
+                  p.id === payload.new.id
+                    ? {
+                        ...p,
+                        venue: payload.new.venue || p.venue,
+                        activeTeamId: payload.new.active_team_id,
+                        standbyTeamId: payload.new.standby_team_id,
+                        lastStandbyAlert: payload.new.last_standby_alert,
+                        alertTimestamp: payload.new.alert_timestamp,
+                        teamQueue: Array.isArray(payload.new.team_queue) ? payload.new.team_queue : p.teamQueue,
+                        juries: Array.isArray(payload.new.juries) ? payload.new.juries : p.juries
+                      }
+                    : p
+                )
+              );
+              if (payload.new.last_standby_alert) {
+                setActiveNotification({
+                  type: 'standby',
+                  title: '🚨 Standby Alert Triggered',
+                  message: payload.new.last_standby_alert,
+                  targetTeamId: payload.new.standby_team_id,
+                  timestamp: payload.new.alert_timestamp
+                });
+                playAlertSound();
+              }
+            }
+          },
+          onEvaluationChange: payload => {
+            if (payload.new && payload.new.id) {
+              setEvaluations(prev => {
+                const idx = prev.findIndex(e => e.id === payload.new.id);
+                const mapped = {
+                  id: payload.new.id,
+                  panelId: payload.new.panel_id,
+                  teamId: payload.new.team_id,
+                  reviewRoundId: payload.new.review_round_id,
+                  juryId: payload.new.jury_id,
+                  marks: payload.new.marks || {},
+                  totalScore: Number(payload.new.total_score) || 0,
+                  remarks: payload.new.remarks || '',
+                  isLocked: Boolean(payload.new.is_locked),
+                  submittedAt: payload.new.submitted_at || ''
+                };
+                if (idx !== -1) {
+                  const copy = [...prev];
+                  copy[idx] = mapped;
+                  return copy;
+                }
+                return [...prev, mapped];
+              });
+            }
+          },
+          onTeamChange: payload => {
+            if (payload.new && payload.new.id) {
+              setTeams(prev =>
+                prev.map(t =>
+                  t.id === payload.new.id
+                    ? {
+                        ...t,
+                        progressPercentage: payload.new.progress_percentage ?? t.progressPercentage,
+                        githubUrl: payload.new.github_url ?? t.githubUrl,
+                        pptUrl: payload.new.ppt_url ?? t.pptUrl,
+                        demoUrl: payload.new.demo_url ?? t.demoUrl
+                      }
+                    : t
+                )
+              );
+            }
+          }
+        });
+      } catch (err) {
+        console.warn('initCloud error, falling back to local interactive mode:', err);
+        setCloudSyncStatus('local_interactive');
+      }
+    }
+
+    initCloud();
+
+    return () => {
+      if (unsubscribeRealtime) unsubscribeRealtime();
+    };
+  }, [playAlertSound]);
+
+  // Cross-tab real-time listener
+  useEffect(() => {
+    if (!syncChannel) return;
+    const handleSyncMessage = event => {
+      const payload = event.data;
+      if (!payload || !payload.type) return;
+
+      switch (payload.type) {
+        case 'STANDBY_ALERT':
+          setPanels(prev =>
+            prev.map(panel => {
+              if (panel.id !== payload.panelId) return panel;
+              const updatedQueue = panel.teamQueue.map(item =>
+                item.teamId === payload.targetTeamId ? { ...item, status: 'STANDBY' } : item
+              );
+              return {
+                ...panel,
+                standbyTeamId: payload.targetTeamId,
+                lastStandbyAlert: payload.msg,
+                alertTimestamp: payload.timeStr,
+                teamQueue: updatedQueue
+              };
+            })
+          );
+          setActiveNotification(payload.notification);
+          playAlertSound();
+          break;
+
+        case 'QUEUE_ADVANCED':
+          if (payload.updatedPanels) setPanels(payload.updatedPanels);
+          break;
+
+        case 'EVALUATION_SAVED':
+          if (payload.updatedEvaluations) setEvaluations(payload.updatedEvaluations);
+          if (payload.updatedTeams) setTeams(payload.updatedTeams);
+          break;
+
+        case 'RUBRICS_UPDATED':
+          if (payload.updatedRubrics) setRubrics(payload.updatedRubrics);
+          break;
+
+        case 'TEAM_UPDATED':
+          if (payload.updatedTeams) setTeams(payload.updatedTeams);
+          break;
+
+        case 'PANEL_VENUE_UPDATED':
+          if (payload.updatedPanels) setPanels(payload.updatedPanels);
+          break;
+
+        default:
+          break;
+      }
+    };
+
+    syncChannel.addEventListener('message', handleSyncMessage);
+    return () => syncChannel.removeEventListener('message', handleSyncMessage);
+  }, [playAlertSound]);
 
   // Switch role and set corresponding sample user
   const switchRole = (role, customUserId = null) => {
@@ -183,7 +383,11 @@ export const AppProvider = ({ children }) => {
       const updatedList = roundList.map(item =>
         item.id === criterionId ? { ...item, ...updatedFields } : item
       );
-      return { ...prev, [roundId]: updatedList };
+      const next = { ...prev, [roundId]: updatedList };
+      syncChannel?.postMessage({ type: 'RUBRICS_UPDATED', updatedRubrics: next });
+      const target = updatedList.find(i => i.id === criterionId);
+      if (target) dbSaveRubricCriterion(roundId, target);
+      return next;
     });
   };
 
@@ -194,7 +398,10 @@ export const AppProvider = ({ children }) => {
     }
     setRubrics(prev => {
       const roundList = prev[roundId] || [];
-      return { ...prev, [roundId]: [...roundList, newCriterion] };
+      const next = { ...prev, [roundId]: [...roundList, newCriterion] };
+      syncChannel?.postMessage({ type: 'RUBRICS_UPDATED', updatedRubrics: next });
+      dbSaveRubricCriterion(roundId, newCriterion);
+      return next;
     });
   };
 
@@ -205,7 +412,10 @@ export const AppProvider = ({ children }) => {
     }
     setRubrics(prev => {
       const roundList = prev[roundId] || [];
-      return { ...prev, [roundId]: roundList.filter(item => item.id !== criterionId) };
+      const next = { ...prev, [roundId]: roundList.filter(item => item.id !== criterionId) };
+      syncChannel?.postMessage({ type: 'RUBRICS_UPDATED', updatedRubrics: next });
+      dbDeleteRubricCriterion(criterionId);
+      return next;
     });
   };
 
@@ -217,12 +427,14 @@ export const AppProvider = ({ children }) => {
     const msg = customMsg || `Standby Alert: Current viva is concluding. Team ${targetTeam?.code || ''} (${targetTeam?.title || ''}), please proceed to venue and assemble outside!`;
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+    let updatedQueueState = [];
     setPanels(prev =>
       prev.map(panel => {
         if (panel.id !== panelId) return panel;
         const updatedQueue = panel.teamQueue.map(item =>
           item.teamId === targetTeamId ? { ...item, status: 'STANDBY' } : item
         );
+        updatedQueueState = updatedQueue;
         return {
           ...panel,
           standbyTeamId: targetTeamId,
@@ -233,20 +445,35 @@ export const AppProvider = ({ children }) => {
       })
     );
 
-    setActiveNotification({
+    const notificationPayload = {
       type: 'standby',
       title: '🚨 Standby Alert Triggered',
       message: msg,
       targetTeamId: targetTeamId,
       timestamp: timeStr
+    };
+
+    setActiveNotification(notificationPayload);
+    playAlertSound();
+
+    syncChannel?.postMessage({
+      type: 'STANDBY_ALERT',
+      panelId,
+      targetTeamId,
+      msg,
+      timeStr,
+      notification: notificationPayload
     });
 
-    playAlertSound();
+    dbSendStandbyAlert(panelId, targetTeamId, msg, timeStr, updatedQueueState);
   };
 
   const markTeamFinishedAndAdvance = (panelId) => {
-    setPanels(prev =>
-      prev.map(panel => {
+    setPanels(prev => {
+      let nextActiveId = null;
+      let finalQueue = [];
+
+      const updated = prev.map(panel => {
         if (panel.id !== panelId) return panel;
         const currentActiveId = panel.activeTeamId;
         const queue = [...panel.teamQueue];
@@ -257,21 +484,31 @@ export const AppProvider = ({ children }) => {
         }
 
         const nextItem = queue.find((q, idx) => idx > activeIdx && q.status !== 'COMPLETED');
-        const nextActiveId = nextItem ? nextItem.teamId : null;
+        nextActiveId = nextItem ? nextItem.teamId : null;
 
         if (nextActiveId) {
           const nextIdx = queue.findIndex(q => q.teamId === nextActiveId);
           queue[nextIdx] = { ...queue[nextIdx], status: 'IN_VIVA' };
         }
 
+        finalQueue = queue;
         return {
           ...panel,
           activeTeamId: nextActiveId,
           standbyTeamId: null,
           teamQueue: queue
         };
-      })
-    );
+      });
+
+      syncChannel?.postMessage({
+        type: 'QUEUE_ADVANCED',
+        updatedPanels: updated
+      });
+
+      dbAdvanceQueue(panelId, nextActiveId, finalQueue);
+
+      return updated;
+    });
 
     confetti({
       particleCount: 80,
@@ -281,9 +518,15 @@ export const AppProvider = ({ children }) => {
   };
 
   const updatePanelVenue = (panelId, newVenue) => {
-    setPanels(prev =>
-      prev.map(p => (p.id === panelId ? { ...p, venue: newVenue } : p))
-    );
+    setPanels(prev => {
+      const updated = prev.map(p => (p.id === panelId ? { ...p, venue: newVenue } : p));
+      syncChannel?.postMessage({
+        type: 'PANEL_VENUE_UPDATED',
+        updatedPanels: updated
+      });
+      dbUpdatePanelVenue(panelId, newVenue);
+      return updated;
+    });
   };
 
   // ----------------------------------------------------
@@ -301,6 +544,8 @@ export const AppProvider = ({ children }) => {
   }) => {
     const totalScore = Object.values(marks).reduce((acc, curr) => acc + (Number(curr) || 0), 0);
 
+    let createdEval = null;
+    let nextEvals;
     setEvaluations(prev => {
       const existingIdx = prev.findIndex(
         e => e.panelId === panelId && e.teamId === teamId && e.reviewRoundId === reviewRoundId && e.juryId === juryId
@@ -318,19 +563,34 @@ export const AppProvider = ({ children }) => {
         isLocked,
         submittedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
+      createdEval = newEval;
 
       if (existingIdx !== -1) {
         const copy = [...prev];
         copy[existingIdx] = newEval;
+        nextEvals = copy;
         return copy;
       }
-      return [...prev, newEval];
+      nextEvals = [...prev, newEval];
+      return nextEvals;
     });
 
+    let nextTeams = null;
     if (progressPercentage !== undefined) {
-      setTeams(prev =>
-        prev.map(t => (t.id === teamId ? { ...t, progressPercentage } : t))
-      );
+      setTeams(prev => {
+        nextTeams = prev.map(t => (t.id === teamId ? { ...t, progressPercentage } : t));
+        return nextTeams;
+      });
+    }
+
+    syncChannel?.postMessage({
+      type: 'EVALUATION_SAVED',
+      updatedEvaluations: nextEvals,
+      updatedTeams: nextTeams
+    });
+
+    if (createdEval) {
+      dbSaveEvaluation(createdEval, progressPercentage);
     }
 
     if (isLocked) {
@@ -346,9 +606,15 @@ export const AppProvider = ({ children }) => {
   // STUDENT TEAM PROFILE & DELIVERABLES SYNC
   // ----------------------------------------------------
   const updateTeamDeliverables = (teamId, updatedFields) => {
-    setTeams(prev =>
-      prev.map(t => (t.id === teamId ? { ...t, ...updatedFields } : t))
-    );
+    setTeams(prev => {
+      const updated = prev.map(t => (t.id === teamId ? { ...t, ...updatedFields } : t));
+      syncChannel?.postMessage({
+        type: 'TEAM_UPDATED',
+        updatedTeams: updated
+      });
+      dbUpdateDeliverables(teamId, updatedFields);
+      return updated;
+    });
   };
 
   // ----------------------------------------------------
@@ -364,6 +630,7 @@ export const AppProvider = ({ children }) => {
         p.id === panelId ? { ...p, juries: newJuriesArray } : p
       )
     );
+    dbUpdatePanelJuries(panelId, newJuriesArray);
   };
 
   const updatePanelTeamQueue = (panelId, newTeamQueueArray) => {
@@ -371,12 +638,10 @@ export const AppProvider = ({ children }) => {
       alert('Security Alert: Only the Admin can modify panel team assignments.');
       return;
     }
-    // Also update each team's panelId to match
     const newTeamIds = newTeamQueueArray.map(q => q.teamId);
     setTeams(prev =>
       prev.map(t => {
         if (newTeamIds.includes(t.id)) return { ...t, panelId };
-        // If team was previously in this panel but removed, keep panelId as-is (don't orphan)
         return t;
       })
     );
@@ -385,6 +650,18 @@ export const AppProvider = ({ children }) => {
         p.id === panelId ? { ...p, teamQueue: newTeamQueueArray } : p
       )
     );
+    dbUpdatePanelQueue(panelId, newTeamQueueArray);
+  };
+
+  const syncCloudNow = async () => {
+    return await seedCloudFromInitialData({
+      reviewRounds,
+      rubrics,
+      teams,
+      panels,
+      evaluations,
+      faculty: OFFICIAL_KEC_FACULTY
+    });
   };
 
   // ----------------------------------------------------
@@ -534,7 +811,9 @@ export const AppProvider = ({ children }) => {
         updateTeamDeliverables,
         updatePanelJuries,
         updatePanelTeamQueue,
-        exportConsolidatedExcel
+        exportConsolidatedExcel,
+        cloudSyncStatus,
+        syncCloudNow
       }}
     >
       {children}

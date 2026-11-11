@@ -7,8 +7,6 @@ import {
   ShieldCheck,
   Volume2,
   VolumeX,
-  Bell,
-  ChevronDown,
   LogOut
 } from 'lucide-react';
 
@@ -23,12 +21,9 @@ export const Header = () => {
     switchRole,
     soundEnabled,
     setSoundEnabled,
-    activeNotification,
     logout,
-    users
+    cloudSyncStatus
   } = useApp();
-
-  const activeRound = reviewRounds.find(r => r.id === activeReviewId) || reviewRounds[2];
 
   return (
     <header
@@ -65,6 +60,47 @@ export const Header = () => {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+          {/* Cloud Database Connection Badge */}
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              padding: '0.2rem 0.6rem',
+              borderRadius: '9999px',
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              backgroundColor:
+                cloudSyncStatus === 'cloud_connected'
+                  ? 'rgba(16, 185, 129, 0.2)'
+                  : 'rgba(245, 158, 11, 0.2)',
+              border:
+                cloudSyncStatus === 'cloud_connected'
+                  ? '1px solid #10B981'
+                  : '1px solid #F59E0B',
+              color:
+                cloudSyncStatus === 'cloud_connected'
+                  ? '#6EE7B7'
+                  : '#FDE68A'
+            }}
+            title={
+              cloudSyncStatus === 'cloud_connected'
+                ? 'Connected to live Supabase Cloud database'
+                : 'Local Interactive Mode (Offline / Standalone with full parity)'
+            }
+          >
+            <span
+              style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                backgroundColor:
+                  cloudSyncStatus === 'cloud_connected' ? '#10B981' : '#F59E0B'
+              }}
+            />
+            {cloudSyncStatus === 'cloud_connected' ? 'Cloud Synced' : 'Local Mode'}
+          </div>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span style={{ color: '#E0E7FF', opacity: 0.8 }}>Academic Cycle:</span>
             <span style={{ fontWeight: 700, color: '#FFFFFF' }}>{institution.academicYear}</span>

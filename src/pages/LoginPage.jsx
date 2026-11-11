@@ -6,12 +6,10 @@ import {
   Settings,
   ShieldCheck,
   Lock,
-  Mail,
   User,
   ArrowRight,
   Eye,
   EyeOff,
-  CheckCircle2,
   Sparkles
 } from 'lucide-react';
 

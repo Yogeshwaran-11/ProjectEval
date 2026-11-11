@@ -1,20 +1,12 @@
-# Kongu Engineering College (Autonomous) — Department of Information Technology
-# College Project Work Evaluation & Review Portal — System Architecture Document (v3.0)
+# College Project Work Evaluation System — Architecture & System Design Document (v2.6)
 
 ---
 
 ## 1. Executive Summary & Feasibility Assessment
 
-### 1.1 Institutional Context & Overview
-**Production-ready Project Evaluation and Live Review Queue Orchestration Platform designed specifically for Kongu Engineering College (Autonomous), Perundurai — Department of Information Technology.**
+### 1.1 Is this Project Feasible?
+**Yes, 100% feasible, highly scalable, and production-ready for deployment with Supabase.**
 
-Key Academic & Administrative Leadership:
-- **Head of the Department (Super Admin)**: Dr. S. Varadhaganapathy (`KEC-IT-HOD`), Senior Professor & Head.
-- **Evaluation Sheet Administrator (Admin)**: Mr. Senthilkumar (`KEC-IT-LA01`), Lab Assistant.
-- **Review Panels**: 5 Concurrent Jury Panels across dedicated department laboratories, staffed by 15 faculty juries selected from the 30 official IT faculty directory.
-- **Student Cohort**: 15 Capstone Project Teams (3 teams per panel), evaluated across progressive stages (*Review 0, Review 1, Review 2, Final Viva*).
-
-### 1.2 System Purpose & Solved Problems
 In engineering colleges and universities, project review days are chaotic:
 - Students wait nervously in hallways for hours not knowing when their turn is.
 - Juries lose time walking out of the lab or shouting names to call the next batch of students.
@@ -27,10 +19,9 @@ This system introduces **Live Review Queue Orchestration** alongside automated 3
 2. Juries can trigger a **"Call Next / Standby Alert"** when the current team is nearing completion.
 3. Students see a real-time status board: **Who is presenting now**, **Who is on standby**, and **When their turn is**.
 4. Full triad of proof links: **GitHub Repository**, **Presentation PPT**, and **Live Deployed Output URL**.
-5. **Phase-Specific Dynamic Rubrics**: Each review phase (*Review 0, Review 1, Review 2, Final Viva*) has its own dedicated rubric criteria (default 5 x 10 = 50 marks), **strictly modifiable ONLY by Admin Mr. Senthilkumar**.
-6. **Strict Jury Panel Isolation**: Juries are cryptographically locked to their assigned panel and cannot jump to or view other panels.
-7. Automated marks aggregation with 1-click Excel and PDF reports under HOD supervision.
-8. Authoritative **Academic UI Design System** with tailored typography and status color codes.
+5. **Phase-Specific Dynamic Rubrics**: Each review phase (*Review 0, Review 1, Review 2, Final Viva*) has its own dedicated rubric criteria (default 5 x 10 = 50 marks), **strictly modifiable ONLY by the Admin**.
+6. Automated marks aggregation with 1-click Excel and PDF reports.
+7. Authoritative **Academic UI Design System** with tailored typography and status color codes.
 
 ---
 
@@ -84,7 +75,7 @@ Different phases of the project evaluate completely different competencies. The 
 
 ```mermaid
 graph TD
-    ADMIN[Admin / Project Coordinator] -->|Exclusive Modify Access| RE_ENGINE[Dynamic Rubrics Engine]
+    ADMIN[Admin: Mr. Senthilkumar - Lab Assistant] -->|Exclusive Modify Access| RE_ENGINE[Dynamic Rubrics Engine]
     
     RE_ENGINE --> R0[Review 0 Rubrics: Ideation & Feasibility - 50M]
     RE_ENGINE --> R1[Review 1 Rubrics: Design & SRS Architecture - 50M]
@@ -127,93 +118,86 @@ graph TD
 4. **Project Report / Documentation Standard** (10 Marks)
 5. **Comprehensive Viva Voce & Defense** (10 Marks)
 
-> **Strict Security & Access Control Rules:**
-> 1. **Rubric Management Security**:
->    - **Admin (Mr. Senthilkumar)**: **Exclusive write/modify access** to add criteria, edit descriptions, adjust weights, and activate review phases.
->    - **Faculty / Jury**: Read-only rubric criteria; can only input scores between `0` and `maxMarks`.
->    - **Super Admin (Dr. S. Varadhaganapathy)**: Read-only audit access.
->    - **Student**: Cannot view rubric weights prior to evaluation; view-only after marks release.
-> 2. **Strict Jury Panel Isolation Security**:
->    - **Faculty Juries are locked to their assigned panel.**
->    - A jury member assigned to Panel 01 can **ONLY view, monitor, and evaluate teams assigned to Panel 01**.
->    - **Cross-panel jumping is strictly blocked** in the UI and state filter: juries cannot browse other panels' queues, see other panels' teams, or enter marks for other panels.
->    - **Admin (Mr. Senthilkumar)** can switch between and configure all 5 panels via tabs.
->    - **Super Admin (Dr. S. Varadhaganapathy)** has an overarching **5-Panel Live Command Grid** and Consolidated Mark Sheet auditing all panels simultaneously.
+> **Strict Security Rule:**
+> - **Student**: Cannot view rubric weights prior to evaluation; view-only after marks release.
+> - **Faculty / Jury**: Read-only rubric criteria; can only input scores between `0` and `max_marks`. Cannot alter criteria or weights.
+> - **Super Admin**: Read-only audit access.
+> - **Admin**: **Exclusive write/modify access** to add criteria, edit descriptions, adjust marks, and activate review phases.
 
 ---
 
-## 4. Multi-Panel Departmental Architecture & Laboratory Allocation
-
-The department evaluation operates 5 concurrent jury panels across physical computing laboratories:
-
-| Panel | Laboratory Venue | Specialization Domain | 3-Member Faculty Jury | Assigned Teams |
-| :--- | :--- | :--- | :--- | :--- |
-| **Panel 01** | **IT Lab 4** (Ground Floor) | Cloud Computing & Web Technologies | **Jury 1**: Dr. J. Premalatha (Sr. Prof)<br>**Jury 2**: Dr. G. K. Kamalam (Sr. Assoc. Prof)<br>**Jury 3**: Dr. R. Shanthakumari (Assoc. Prof) | `T-IT-01`: Edge AI Smart Grid<br>`T-IT-02`: MedVision Diagnostics<br>`T-IT-03`: Zero-Trust Supply Chain |
-| **Panel 02** | **IT Lab 2** (First Floor) | Artificial Intelligence & Machine Learning | **Jury 1**: Dr. S. Anandamurugan (Prof)<br>**Jury 2**: Dr. E. M. Roopa Devi (Assoc. Prof)<br>**Jury 3**: S. Vinothkumar (Asst. Prof SRG) | `T-IT-04`: GPS-Denied Drone<br>`T-IT-05`: Legal LLM Retrieval<br>`T-IT-06`: Federated EHR Privacy |
-| **Panel 03** | **IT Lab 3** (First Floor) | Cyber Security & IoT Center | **Jury 1**: D. Vijay Anand (Asst. Prof SLG)<br>**Jury 2**: A. P. Ponselvakumar (Asst. Prof SLG)<br>**Jury 3**: Dr. V. Devisurya (Asst. Prof SLG) | `T-IT-07`: AI SCADA Defense<br>`T-IT-08`: Decentralized Threat Ledger<br>`T-IT-09`: Smart Contract Bytecode Audit |
-| **Panel 04** | **IT Lab 1** (Ground Floor) | Mobile Computing & Full-Stack Systems | **Jury 1**: A. Jeevanantham (Asst. Prof SLG)<br>**Jury 2**: R. Aarthi (Asst. Prof SRG)<br>**Jury 3**: K. Sruthi (Asst. Prof) | `T-IT-10`: Disaster Mesh Network<br>`T-IT-11`: Edge AR Campus Navigation<br>`T-IT-12`: Smart Irrigation NPK IoT |
-| **Panel 05** | **IT Seminar Hall B** (Second Floor) | Big Data Analytics & Cloud Infrastructure | **Jury 1**: S. Kavithra (Asst. Prof)<br>**Jury 2**: R. Sandhiya (Asst. Prof)<br>**Jury 3**: V. P. Gayathri (Asst. Prof) | `T-IT-13`: Genomic Pipeline Acceleration<br>`T-IT-14`: Ultra-Low Latency Order Matching<br>`T-IT-15`: TinyML Acoustic Predictive Maint |
-
----
-
-## 5. High-Level System Architecture
+## 4. High-Level System Architecture
 
 ```mermaid
 graph TD
     subgraph Users & Portals
-        S[Student Portal] -->|Submit GitHub, PPT, Live Demo| AUTH[Auth & Session Engine]
-        JP1[Jury Panel 01] -->|Locked to Panel 01 Teams Only| AUTH
-        JP2[Jury Panel 02] -->|Locked to Panel 02 Teams Only| AUTH
-        JP3[Jury Panel 03..05] -->|Locked to Assigned Panel Only| AUTH
-        ADM[Admin: Mr. Senthilkumar] -->|Rubrics Builder & 5-Panel Management| AUTH
-        SADM[Super Admin: Dr. S. Varadhaganapathy] -->|5-Panel Command Center & Excel Audit| AUTH
+        S1[Student 1] & S2[Student 2] -->|Submit Git, PPT, Deployed Links| SP[Student Portal]
+        J1[Jury 1] & J2[Jury 2] & J3[Jury 3] -->|Score Active Review Rubrics, Alert Next| JP[Faculty Jury Portal]
+        ADM[Admin / Coordinator] -->|Exclusively Manage Review-Specific Rubrics| AP[Admin Portal]
+        SADM[Super Admin / HOD] -->|View Git/PPT/Demo, Audit Marks, Export Excel/PDF| SAP[Super Admin Portal]
     end
 
-    subgraph Security & Isolation Layer
-        AUTH --> RBAC[Role-Based Access Controller]
-        RBAC --> ISOLATION[Strict Panel Isolation Filter]
+    subgraph Application Tier [React + Supabase Realtime Engine]
+        AUTH[Auth Service - Role-Guarded JWT]
+        QUEUE_SVC[Live Review Queue & Standby Alert Service]
+        VENUE_NOTIF[Live Venue Broadcast Engine]
+        RUBRICS[Review-Specific Dynamic Rubric Engine]
+        EVAL_SVC[3-Jury Aggregation & Lock Engine]
+        EXPORT[ExcelJS & PDF Generator Engine]
     end
 
-    subgraph Application Tier [React 19 + Context Engine]
-        ISOLATION --> QUEUE_SVC[Live Review Queue & Standby Broadcast Engine]
-        ISOLATION --> RUBRICS[Review-Specific Dynamic Rubrics (Admin Exclusive)]
-        ISOLATION --> EVAL_SVC[3-Jury Score Aggregator (/50 Marks)]
-        ISOLATION --> EXPORT[ExcelJS Consolidated Mark Sheet Engine]
+    subgraph Cloud Persistence Tier [Supabase Managed Cloud]
+        SB_DB[(Supabase PostgreSQL)]
+        SB_RT[Supabase Realtime WebSockets]
+        SB_AUTH[Supabase Auth / RLS]
     end
+
+    SP --> AUTH
+    JP --> AUTH
+    AP --> AUTH
+    SAP --> AUTH
+
+    AUTH --> QUEUE_SVC
+    AUTH --> VENUE_NOTIF
+    AUTH --> RUBRICS
+    AUTH --> EVAL_SVC
+    AUTH --> EXPORT
+
+    QUEUE_SVC <--> SB_RT
+    VENUE_NOTIF <--> SB_RT
+    RUBRICS <--> SB_DB
+    EVAL_SVC <--> SB_DB
+    EXPORT <--> SB_DB
 ```
 
 ---
 
-## 6. Role-Based Access Control (RBAC) Matrix
+## 5. Role-Based Access Control (RBAC) Matrix
 
-| Feature / Capability | Student | Faculty (Jury) | Admin (Mr. Senthilkumar) | Super Admin (Dr. S. Varadhaganapathy) |
+| Feature / Capability | Student | Faculty (Jury) | Admin (Mr. Senthilkumar · Lab Asst.) | Super Admin (HOD Dr. S. Varadhaganapathy) |
 | :--- | :---: | :---: | :---: | :---: |
-| **Account Creation & Login** | Register with Roll No (`22ITR...`) | Pre-seeded Faculty ID | Pre-seeded (`KEC-IT-LA01`) | Pre-seeded (`KEC-IT-HOD`) |
-| **Panel Isolation Rule** | 🔒 Own Panel Only | 🔒 **Strictly Assigned Panel Only (No Jumping)** | 🔄 Switch All 5 Panels | 🌐 Global 5-Panel Grid |
+| **Account Creation & Login** | Register with Roll No | Pre-seeded / Faculty ID | Pre-seeded | Pre-seeded |
 | **Team Registration (Mentor, Title, Teammates)** | ✅ Full (Sync for both) | ❌ Read-only | ✅ Override / View | ✅ Global View |
 | **Submit Git, PPT & Deployed Demo Links** | ✅ Yes | ❌ Read-only | ❌ Read-only | ❌ Read-only |
 | **Open & Test Git Repo, PPT & Deployed App** | ✅ Self | ✅ Click to Open All 3 | ✅ Click to Open All 3 | ✅ Click to Open All 3 |
-| **View Live Panel Queue & "Who's Presenting"** | ✅ Own Panel Live | ✅ Own Panel Live | ✅ All 5 Panels | ✅ All 5 Panels |
-| **Trigger "Call Next Team / Standby" Alert** | ❌ No | ✅ Yes (Assigned Panel Only) | ✅ Yes | ❌ No |
-| **Mark Team as "Finished" & Advance Queue** | ❌ No | ✅ Yes (Assigned Panel Only) | ✅ Yes | ❌ No |
-| **Update Review Venue & Broadcast Alert** | ❌ No | ✅ Yes (Assigned Panel Only) | ✅ Yes | ✅ View All |
+| **View Live Panel Queue & "Who's Presenting"** | ✅ Own Panel Live | ✅ Own Panel Live | ✅ All Panels | ✅ All Panels |
+| **Trigger "Call Next Team / Standby" Alert** | ❌ No | ✅ Yes (Assigned Panel) | ✅ Yes | ❌ No |
+| **Mark Team as "Finished" & Advance Queue** | ❌ No | ✅ Yes (Assigned Panel) | ✅ Yes | ❌ No |
+| **Update Review Venue & Broadcast Alert** | ❌ No | ✅ Yes (Assigned Panel) | ✅ Yes | ✅ View All |
 | **Track & Update Project Progress %** | ✅ View / Submit | ✅ Update & Rate % | ✅ View | ✅ View |
-| **Create & Modify Review-Specific Rubrics** | ❌ No | ❌ No | ✅ **Exclusive Write Access** | ❌ Read-only |
+| **Create & Modify Review-Specific Rubrics** | ❌ No | ❌ No | ✅ **Exclusive Access** | ❌ Read-only |
 | **Schedule Time Slots & Assign Team Batches** | ❌ No | ❌ No | ✅ Full Control | ❌ Read-only |
-| **Evaluate Active Phase Rubrics & Lock Marks** | ❌ No | ✅ Assigned Panel Teams Only | ❌ No | ❌ Read-only |
+| **Evaluate Active Phase Rubrics & Lock** | ❌ No | ✅ Assigned Teams Only | ❌ No | ❌ Read-only |
 | **Real-time 3-Jury Score Aggregation** | ❌ No | ❌ Own Marks Only | ✅ Review Level | ✅ Global Real-Time |
-| **Download Consolidated Mark Sheet (Excel/PDF)**| ❌ No | ❌ No | ❌ No | ✅ **1-Click Export** |
+| **Download Consolidated Mark Sheet (Excel/PDF)**| ❌ No | ❌ No | ❌ No | ✅ 1-Click Export |
 
 ---
 
-## 7. Report Generation Output Preview
+## 6. Report Generation Output Preview
 
-### 7.1 Master Consolidated Mark Sheet Structure (Auto-Calculated by Panel)
+### 6.1 Excel (`.xlsx`) Export Structure (Auto-Calculated)
 | Team ID | Project Title | Teammate 1 (Roll) | Teammate 2 (Roll) | Mentor | Panel | Review Phase | Jury 1 (/50) | Jury 2 (/50) | Jury 3 (/50) | Panel Avg (/50) | Progress % | Verified Artifacts |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **T-IT-01** | Autonomous Smart Grid Optimization | Yogeshwaran V (22ITR112) | Karthik R (22ITR045) | Dr. E. M. Roopa Devi | Panel 01 (IT Lab 4) | Review 2 | 47.0 | 45.0 | 46.0 | **46.00** | 85% | [Git](https://github.com/kec-it/smart-edge-grid) • [PPT](https://docs.google.com/presentation) • [Demo](https://smartgrid-edge.vercel.app) |
-| **T-IT-02** | Real-time AI Medical Imaging Diagnosis | Deepika S (22ITR021) | Ananya M (22ITR008) | D. Vijay Anand | Panel 01 (IT Lab 4) | Review 2 | 48.0 | 47.0 | 49.0 | **48.00** | 90% | [Git](https://github.com/kec-it/med-vision-ai) • [PPT](https://docs.google.com/presentation) • [Demo](https://medvision-diagnosis.vercel.app) |
-| **T-IT-04** | GPS-Denied Drone Path Navigation | Vigneshwaran S (22ITR105) | Pavithra M (22ITR064) | Dr. V. Devisurya | Panel 02 (IT Lab 2) | Review 2 | 46.0 | 45.0 | 47.0 | **46.00** | 80% | [Git](https://github.com/kec-it/autonomous-drone-slam) • [PPT](https://docs.google.com/presentation) • [Demo](https://drone-slam-vision.web.app) |
-| **T-IT-07** | Zero-Day SCADA Intrusion Defense | Harish K (22ITR038) | Divya P (22ITR025) | S. Kavithra | Panel 03 (IT Lab 3) | Review 2 | 47.0 | 46.0 | 48.0 | **47.00** | 88% | [Git](https://github.com/kec-it/scada-zero-day-ids) • [PPT](https://docs.google.com/presentation) • [Demo](https://scada-defense.web.app) |
-| **T-IT-10** | Decentralized Disaster Mesh Network | Sanjay B (22ITR092) | Nithish Kumar K (22ITR058) | K. Sruthi | Panel 04 (IT Lab 1) | Review 2 | 45.0 | 46.0 | 44.0 | **45.00** | 82% | [Git](https://github.com/kec-it/disaster-ble-mesh) • [PPT](https://docs.google.com/presentation) • [Demo](https://disaster-mesh.web.app) |
-| **T-IT-13** | Accelerated Genomic Variant Pipeline | Ragul S (22ITR081) | Varun C (22ITR102) | V. P. Gayathri | Panel 05 (Seminar Hall B) | Review 2 | 48.0 | 47.0 | 49.0 | **48.00** | 92% | [Git](https://github.com/kec-it/genomic-wgs-pipeline) • [PPT](https://docs.google.com/presentation) • [Demo](https://genomic-pipeline.vercel.app) |
+| T-CS-01 | Autonomous Smart Grid | Alex (21CS01) | Brian (21CS02) | Dr. Ramesh | Panel 1 | Review 2 | 46.0 | 44.5 | 45.0 | **45.17** | 85% | [Git](https://github.com) • [PPT](https://slides.com) • [Demo](https://demo.app) |
+| T-CS-02 | AI Medical Diagnostics | Claire (21CS05) | David (21CS06) | Prof. Priya | Panel 1 | Review 2 | 48.0 | 47.0 | 49.0 | **48.00** | 90% | [Git](https://github.com) • [PPT](https://slides.com) • [Demo](https://demo.app) |
+| T-CS-03 | Cyber Threat Detection | Evan (21CS09) | Fiona (21CS10) | Dr. Suresh | Panel 1 | Review 2 | 42.0 | 43.0 | 41.5 | **42.17** | 70% | [Git](https://github.com) • [PPT](https://slides.com) • [Demo](https://demo.app) |
