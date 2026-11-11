@@ -534,10 +534,10 @@
           "isLead": false
         }
       ],
-      "githubUrl": "https://github.com/kec-it/smart-edge-grid",
+      "githubUrl": "https://github.com/yogeshwaran-custom-repo",
       "pptUrl": "https://docs.google.com/presentation/d/smart-grid-deck",
       "demoUrl": "https://smartgrid-edge.vercel.app",
-      "progressPercentage": 85
+      "progressPercentage": 88
     },
     {
       "id": "team-02",
@@ -952,9 +952,9 @@
         }
       ],
       "activeTeamId": "team-02",
-      "standbyTeamId": "team-03",
-      "lastStandbyAlert": "Team T-IT-02 is concluding viva Q&A. Team T-IT-03 (Zero-Trust Blockchain), please assemble outside IT Lab 4!",
-      "alertTimestamp": "10:35 AM",
+      "standbyTeamId": "team-02",
+      "lastStandbyAlert": "Test Standby Alert",
+      "alertTimestamp": "11:00 AM",
       "teamQueue": [
         {
           "teamId": "team-01",
@@ -1222,22 +1222,18 @@
   ],
   "evaluations": [
     {
-      "id": "eval-t1-j1",
+      "id": "eval-test-01",
       "panelId": "panel-01",
       "teamId": "team-01",
       "reviewRoundId": "REV-2",
       "juryId": "usr-jury-1",
       "marks": {
-        "R2-C1": 9.5,
-        "R2-C2": 9,
-        "R2-C3": 9.5,
-        "R2-C4": 9,
-        "R2-C5": 9
+        "R2-C1": 10
       },
-      "totalScore": 46,
-      "remarks": "Impressive edge computing architecture and clean Git repository commits.",
+      "totalScore": 10,
+      "remarks": "Automated test eval",
       "isLocked": true,
-      "submittedAt": "10:19 AM"
+      "submittedAt": "11:00 AM"
     },
     {
       "id": "eval-t1-j2",

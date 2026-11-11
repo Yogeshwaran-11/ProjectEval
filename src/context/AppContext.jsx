@@ -92,13 +92,16 @@ export const AppProvider = ({ children }) => {
   });
 
   const [teams, setTeams] = useState(() => {
-    const savedVer = localStorage.getItem('pe_version');
-    if (savedVer !== DATA_VERSION) {
-      localStorage.setItem('pe_teams', JSON.stringify(INITIAL_TEAMS));
-      return INITIAL_TEAMS;
-    }
     const saved = localStorage.getItem('pe_teams');
-    return saved ? JSON.parse(saved) : INITIAL_TEAMS;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {
+        // ignore
+      }
+    }
+    return INITIAL_TEAMS;
   });
 
   const [panels, setPanels] = useState(() => {
@@ -672,16 +675,27 @@ export const AppProvider = ({ children }) => {
   // STUDENT TEAM PROFILE & DELIVERABLES SYNC
   // ----------------------------------------------------
   const updateTeamDeliverables = (teamId, updatedFields) => {
+    let updatedTeamsList = null;
     setTeams(prev => {
       const updated = prev.map(t => (t.id === teamId ? { ...t, ...updatedFields } : t));
-      syncChannel?.postMessage({
-        type: 'TEAM_UPDATED',
-        updatedTeams: updated
-      });
-      dbUpdateDeliverables(teamId, updatedFields);
-      apiUpdateTeamDeliverables(teamId, updatedFields);
+      updatedTeamsList = updated;
+      try {
+        localStorage.setItem('pe_teams', JSON.stringify(updated));
+      } catch (e) {
+        console.warn('localStorage save error:', e);
+      }
       return updated;
     });
+
+    syncChannel?.postMessage({
+      type: 'TEAM_UPDATED',
+      teamId,
+      updatedTeams: updatedTeamsList,
+      updatedFields
+    });
+
+    dbUpdateDeliverables(teamId, updatedFields);
+    apiUpdateTeamDeliverables(teamId, updatedFields);
   };
 
   // ----------------------------------------------------

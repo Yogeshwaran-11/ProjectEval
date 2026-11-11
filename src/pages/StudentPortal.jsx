@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { QueueStatusBadge } from '../components/QueueStatusBadge';
 import { MediaModal } from '../components/MediaModal';
@@ -51,6 +51,22 @@ export const StudentPortal = () => {
   const [demoUrl, setDemoUrl] = useState(studentTeam.demoUrl || '');
   const [abstract, setAbstract] = useState(studentTeam.abstract || '');
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Synchronize local input state whenever studentTeam data loads or updates
+  useEffect(() => {
+    if (studentTeam) {
+      setGithubUrl(studentTeam.githubUrl || '');
+      setPptUrl(studentTeam.pptUrl || '');
+      setDemoUrl(studentTeam.demoUrl || '');
+      setAbstract(studentTeam.abstract || '');
+    }
+  }, [
+    studentTeam.id,
+    studentTeam.githubUrl,
+    studentTeam.pptUrl,
+    studentTeam.demoUrl,
+    studentTeam.abstract
+  ]);
 
   // Modal preview state
   const [modalConfig, setModalConfig] = useState({ isOpen: false, title: '', url: '', type: 'link' });
