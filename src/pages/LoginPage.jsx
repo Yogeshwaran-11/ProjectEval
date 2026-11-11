@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { apiLogin } from '../services/apiService';
 import {
   GraduationCap,
   Scale,
@@ -50,11 +51,23 @@ export const LoginPage = ({ onLoginSuccess }) => {
     onLoginSuccess();
   };
 
-  const handleSubmit = e => {
+  const handleSubmit = async e => {
     e.preventDefault();
     setErrorMessage('');
 
-    // Find matching user by rollNo, empId, or email
+    // 1. Verify against backend API first
+    try {
+      const apiRes = await apiLogin(identifier, password);
+      if (apiRes && apiRes.success && apiRes.user) {
+        switchRole(apiRes.user.role, apiRes.user.id);
+        onLoginSuccess();
+        return;
+      }
+    } catch {
+      // Continue to local fallback
+    }
+
+    // 2. Fallback to local users list
     const trimmed = identifier.trim().toLowerCase();
     const matched = users.find(u => {
       const matchRoll = u.rollNo && u.rollNo.toLowerCase() === trimmed;

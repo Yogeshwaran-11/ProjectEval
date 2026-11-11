@@ -25,6 +25,17 @@ import {
   dbDeleteRubricCriterion,
   setupSupabaseRealtimeSubscriptions
 } from '../services/supabaseService';
+import {
+  apiFetchHealth,
+  apiFetchAllData,
+  apiSendStandbyAlert,
+  apiAdvanceQueue,
+  apiSaveEvaluation,
+  apiUpdateTeamDeliverables,
+  apiUpdateRubrics,
+  apiUpdatePanelVenue,
+  setupSseRealtime
+} from '../services/apiService';
 
 const AppContext = createContext();
 const DATA_VERSION = 'v8_multi_tab_realtime_ready';
@@ -177,111 +188,159 @@ export const AppProvider = ({ children }) => {
     }
   }, [soundEnabled]);
 
-  // Supabase Cloud Initialization & Realtime Subscription
+  // Backend & Cloud Initialization & Realtime Subscription
   useEffect(() => {
-    let unsubscribeRealtime = null;
+    let unsubscribeSupabase = null;
+    let unsubscribeSse = null;
 
-    async function initCloud() {
+    async function initBackend() {
+      // 1. Try Native Backend API first (Node / Vite middleware)
       try {
-        const health = await checkSupabaseHealth();
-        if (!health.online) {
-          setCloudSyncStatus('local_interactive');
-          return;
-        }
+        const apiHealth = await apiFetchHealth();
+        if (apiHealth.status === 'online') {
+          console.log('✅ Connected to Native Backend Engine:', apiHealth);
+          setCloudSyncStatus('cloud_connected');
+          const serverData = await apiFetchAllData();
+          if (serverData) {
+            if (serverData.panels) setPanels(serverData.panels);
+            if (serverData.teams) setTeams(serverData.teams);
+            if (serverData.rubrics) setRubrics(serverData.rubrics);
+            if (serverData.evaluations) setEvaluations(serverData.evaluations);
+          }
 
-        setCloudSyncStatus('cloud_connected');
-        const cloudData = await fetchAllCloudData();
-        if (cloudData) {
-          if (cloudData.panels) setPanels(cloudData.panels);
-          if (cloudData.teams) setTeams(cloudData.teams);
-          if (cloudData.rubrics) setRubrics(cloudData.rubrics);
-          if (cloudData.evaluations) setEvaluations(cloudData.evaluations);
-        }
-
-        unsubscribeRealtime = setupSupabaseRealtimeSubscriptions({
-          onPanelChange: payload => {
-            if (payload.new && payload.new.id) {
-              setPanels(prev =>
-                prev.map(p =>
-                  p.id === payload.new.id
-                    ? {
-                        ...p,
-                        venue: payload.new.venue || p.venue,
-                        activeTeamId: payload.new.active_team_id,
-                        standbyTeamId: payload.new.standby_team_id,
-                        lastStandbyAlert: payload.new.last_standby_alert,
-                        alertTimestamp: payload.new.alert_timestamp,
-                        teamQueue: Array.isArray(payload.new.team_queue) ? payload.new.team_queue : p.teamQueue,
-                        juries: Array.isArray(payload.new.juries) ? payload.new.juries : p.juries
-                      }
-                    : p
-                )
-              );
-              if (payload.new.last_standby_alert) {
-                setActiveNotification({
-                  type: 'standby',
-                  title: '🚨 Standby Alert Triggered',
-                  message: payload.new.last_standby_alert,
-                  targetTeamId: payload.new.standby_team_id,
-                  timestamp: payload.new.alert_timestamp
-                });
+          unsubscribeSse = setupSseRealtime({
+            onStandbyAlert: data => {
+              if (data.updatedPanels) setPanels(data.updatedPanels);
+              if (data.notification) {
+                setActiveNotification(data.notification);
                 playAlertSound();
               }
+            },
+            onQueueAdvanced: data => {
+              if (data.updatedPanels) setPanels(data.updatedPanels);
+            },
+            onEvaluationSaved: data => {
+              if (data.updatedEvaluations) setEvaluations(data.updatedEvaluations);
+              if (data.updatedTeams) setTeams(data.updatedTeams);
+            },
+            onTeamUpdated: data => {
+              if (data.updatedTeams) setTeams(data.updatedTeams);
+            },
+            onRubricsUpdated: data => {
+              if (data.updatedRubrics) setRubrics(data.updatedRubrics);
+            },
+            onVenueUpdated: data => {
+              if (data.updatedPanels) setPanels(data.updatedPanels);
             }
-          },
-          onEvaluationChange: payload => {
-            if (payload.new && payload.new.id) {
-              setEvaluations(prev => {
-                const idx = prev.findIndex(e => e.id === payload.new.id);
-                const mapped = {
-                  id: payload.new.id,
-                  panelId: payload.new.panel_id,
-                  teamId: payload.new.team_id,
-                  reviewRoundId: payload.new.review_round_id,
-                  juryId: payload.new.jury_id,
-                  marks: payload.new.marks || {},
-                  totalScore: Number(payload.new.total_score) || 0,
-                  remarks: payload.new.remarks || '',
-                  isLocked: Boolean(payload.new.is_locked),
-                  submittedAt: payload.new.submitted_at || ''
-                };
-                if (idx !== -1) {
-                  const copy = [...prev];
-                  copy[idx] = mapped;
-                  return copy;
-                }
-                return [...prev, mapped];
-              });
-            }
-          },
-          onTeamChange: payload => {
-            if (payload.new && payload.new.id) {
-              setTeams(prev =>
-                prev.map(t =>
-                  t.id === payload.new.id
-                    ? {
-                        ...t,
-                        progressPercentage: payload.new.progress_percentage ?? t.progressPercentage,
-                        githubUrl: payload.new.github_url ?? t.githubUrl,
-                        pptUrl: payload.new.ppt_url ?? t.pptUrl,
-                        demoUrl: payload.new.demo_url ?? t.demoUrl
-                      }
-                    : t
-                )
-              );
-            }
-          }
-        });
+          });
+          return;
+        }
       } catch (err) {
-        console.warn('initCloud error, falling back to local interactive mode:', err);
-        setCloudSyncStatus('local_interactive');
+        console.warn('Native backend check:', err.message);
       }
+
+      // 2. Fallback to Supabase Cloud
+      try {
+        const health = await checkSupabaseHealth();
+        if (health.online) {
+          setCloudSyncStatus('cloud_connected');
+          const cloudData = await fetchAllCloudData();
+          if (cloudData) {
+            if (cloudData.panels) setPanels(cloudData.panels);
+            if (cloudData.teams) setTeams(cloudData.teams);
+            if (cloudData.rubrics) setRubrics(cloudData.rubrics);
+            if (cloudData.evaluations) setEvaluations(cloudData.evaluations);
+          }
+
+          unsubscribeSupabase = setupSupabaseRealtimeSubscriptions({
+            onPanelChange: payload => {
+              if (payload.new && payload.new.id) {
+                setPanels(prev =>
+                  prev.map(p =>
+                    p.id === payload.new.id
+                      ? {
+                          ...p,
+                          venue: payload.new.venue || p.venue,
+                          activeTeamId: payload.new.active_team_id,
+                          standbyTeamId: payload.new.standby_team_id,
+                          lastStandbyAlert: payload.new.last_standby_alert,
+                          alertTimestamp: payload.new.alert_timestamp,
+                          teamQueue: Array.isArray(payload.new.team_queue) ? payload.new.team_queue : p.teamQueue,
+                          juries: Array.isArray(payload.new.juries) ? payload.new.juries : p.juries
+                        }
+                      : p
+                  )
+                );
+                if (payload.new.last_standby_alert) {
+                  setActiveNotification({
+                    type: 'standby',
+                    title: '🚨 Standby Alert Triggered',
+                    message: payload.new.last_standby_alert,
+                    targetTeamId: payload.new.standby_team_id,
+                    timestamp: payload.new.alert_timestamp
+                  });
+                  playAlertSound();
+                }
+              }
+            },
+            onEvaluationChange: payload => {
+              if (payload.new && payload.new.id) {
+                setEvaluations(prev => {
+                  const idx = prev.findIndex(e => e.id === payload.new.id);
+                  const mapped = {
+                    id: payload.new.id,
+                    panelId: payload.new.panel_id,
+                    teamId: payload.new.team_id,
+                    reviewRoundId: payload.new.review_round_id,
+                    juryId: payload.new.jury_id,
+                    marks: payload.new.marks || {},
+                    totalScore: Number(payload.new.total_score) || 0,
+                    remarks: payload.new.remarks || '',
+                    isLocked: Boolean(payload.new.is_locked),
+                    submittedAt: payload.new.submitted_at || ''
+                  };
+                  if (idx !== -1) {
+                    const copy = [...prev];
+                    copy[idx] = mapped;
+                    return copy;
+                  }
+                  return [...prev, mapped];
+                });
+              }
+            },
+            onTeamChange: payload => {
+              if (payload.new && payload.new.id) {
+                setTeams(prev =>
+                  prev.map(t =>
+                    t.id === payload.new.id
+                      ? {
+                          ...t,
+                          progressPercentage: payload.new.progress_percentage ?? t.progressPercentage,
+                          githubUrl: payload.new.github_url ?? t.githubUrl,
+                          pptUrl: payload.new.ppt_url ?? t.pptUrl,
+                          demoUrl: payload.new.demo_url ?? t.demoUrl
+                        }
+                      : t
+                  )
+                );
+              }
+            }
+          });
+          return;
+        }
+      } catch (err) {
+        console.warn('Supabase check fallback:', err.message);
+      }
+
+      // 3. Fallback to local interactive mode
+      setCloudSyncStatus('local_interactive');
     }
 
-    initCloud();
+    initBackend();
 
     return () => {
-      if (unsubscribeRealtime) unsubscribeRealtime();
+      if (unsubscribeSse) unsubscribeSse();
+      if (unsubscribeSupabase) unsubscribeSupabase();
     };
   }, [playAlertSound]);
 
@@ -387,6 +446,7 @@ export const AppProvider = ({ children }) => {
       syncChannel?.postMessage({ type: 'RUBRICS_UPDATED', updatedRubrics: next });
       const target = updatedList.find(i => i.id === criterionId);
       if (target) dbSaveRubricCriterion(roundId, target);
+      apiUpdateRubrics(roundId, next[roundId]);
       return next;
     });
   };
@@ -401,6 +461,7 @@ export const AppProvider = ({ children }) => {
       const next = { ...prev, [roundId]: [...roundList, newCriterion] };
       syncChannel?.postMessage({ type: 'RUBRICS_UPDATED', updatedRubrics: next });
       dbSaveRubricCriterion(roundId, newCriterion);
+      apiUpdateRubrics(roundId, next[roundId]);
       return next;
     });
   };
@@ -415,6 +476,7 @@ export const AppProvider = ({ children }) => {
       const next = { ...prev, [roundId]: roundList.filter(item => item.id !== criterionId) };
       syncChannel?.postMessage({ type: 'RUBRICS_UPDATED', updatedRubrics: next });
       dbDeleteRubricCriterion(criterionId);
+      apiUpdateRubrics(roundId, next[roundId]);
       return next;
     });
   };
@@ -466,6 +528,7 @@ export const AppProvider = ({ children }) => {
     });
 
     dbSendStandbyAlert(panelId, targetTeamId, msg, timeStr, updatedQueueState);
+    apiSendStandbyAlert(panelId, targetTeamId, msg, timeStr, updatedQueueState);
   };
 
   const markTeamFinishedAndAdvance = (panelId) => {
@@ -506,6 +569,7 @@ export const AppProvider = ({ children }) => {
       });
 
       dbAdvanceQueue(panelId, nextActiveId, finalQueue);
+      apiAdvanceQueue(panelId, nextActiveId, finalQueue);
 
       return updated;
     });
@@ -525,6 +589,7 @@ export const AppProvider = ({ children }) => {
         updatedPanels: updated
       });
       dbUpdatePanelVenue(panelId, newVenue);
+      apiUpdatePanelVenue(panelId, newVenue);
       return updated;
     });
   };
@@ -591,6 +656,7 @@ export const AppProvider = ({ children }) => {
 
     if (createdEval) {
       dbSaveEvaluation(createdEval, progressPercentage);
+      apiSaveEvaluation(createdEval, progressPercentage);
     }
 
     if (isLocked) {
@@ -613,6 +679,7 @@ export const AppProvider = ({ children }) => {
         updatedTeams: updated
       });
       dbUpdateDeliverables(teamId, updatedFields);
+      apiUpdateTeamDeliverables(teamId, updatedFields);
       return updated;
     });
   };
