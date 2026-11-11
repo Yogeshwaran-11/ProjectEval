@@ -236,19 +236,21 @@ export const AppProvider = ({ children }) => {
               if (data.updatedPanels) setPanels(data.updatedPanels);
             }
           });
-          return;
         }
       } catch (err) {
         console.warn('Native backend check:', err.message);
       }
 
-      // 2. Fallback to Supabase Cloud
+      // 2. Connect to Supabase Cloud Database & WebSockets (Dual-Active Mode)
       try {
         const health = await checkSupabaseHealth();
         if (health.online) {
+          console.log('✅ Connected to Supabase Cloud Database');
           setCloudSyncStatus('cloud_connected');
+
+          // If native backend was unavailable, hydrate from Supabase
           const cloudData = await fetchAllCloudData();
-          if (cloudData) {
+          if (cloudData && !unsubscribeSse) {
             if (cloudData.panels) setPanels(cloudData.panels);
             if (cloudData.teams) setTeams(cloudData.teams);
             if (cloudData.rubrics) setRubrics(cloudData.rubrics);

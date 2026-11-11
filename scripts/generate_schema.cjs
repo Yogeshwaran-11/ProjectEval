@@ -194,3 +194,4 @@ sql += `\n-- 5. Panels (5 Capstone Review Panels)\nINSERT INTO panels (id, panel
 
 fs.writeFileSync(path.resolve(__dirname, '../supabase_schema.sql'), sql, 'utf8');
 console.log('✅ Generated comprehensive supabase_schema.sql with 100% data parity!');
+
