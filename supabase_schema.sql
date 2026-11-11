@@ -9,6 +9,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- 2. Drop existing tables for a clean, deterministic schema synchronization
 DROP TABLE IF EXISTS evaluations CASCADE;
 DROP TABLE IF EXISTS rubrics CASCADE;
+DROP TABLE IF EXISTS team_members CASCADE;
 DROP TABLE IF EXISTS teams CASCADE;
 DROP TABLE IF EXISTS panels CASCADE;
 DROP TABLE IF EXISTS review_rounds CASCADE;
